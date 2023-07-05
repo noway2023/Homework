@@ -170,15 +170,19 @@ Vector3f castRay(
                 // is composed of a diffuse and a specular reflection component.
                 // [/comment]
                 Vector3f lightAmt = 0, specularColor = 0;
-                Vector3f shadowPointOrig = (dotProduct(dir, N) < 0) ?
-                                           hitPoint + N * scene.epsilon :
-                                           hitPoint - N * scene.epsilon;
+                // Vector3f shadowPointOrig = (dotProduct(dir, N) < 0) ?
+                //                            hitPoint + N * scene.epsilon :
+                //                            hitPoint - N * scene.epsilon;
                 // [comment]
                 // Loop over all lights in the scene and sum their contribution up
                 // We also apply the lambert cosine law
                 // [/comment]
                 for (auto& light : scene.get_lights()) {
                     Vector3f lightDir = light->position - hitPoint;
+
+                    Vector3f shadowPointOrig = (dotProduct(lightDir, N) < 0) ?
+                                           hitPoint - N * scene.epsilon :
+                                           hitPoint + N * scene.epsilon;
                     // square of the distance between hitPoint and the light
                     float lightDistance2 = dotProduct(lightDir, lightDir);
                     lightDir = normalize(lightDir);
@@ -223,17 +227,19 @@ void Renderer::Render(const Scene& scene)
         for (int i = 0; i < scene.width; ++i)
         {
             // generate primary ray direction
-            float x = 0;
-            float y = 0;
+            float x = 0.;
+            float y = 0.;
             // TODO: Find the x and y positions of the current pixel to get the direction
             // vector that passes through it.
             // Also, don't forget to multiply both of them with the variable *scale*, and
             // x (horizontal) variable with the *imageAspectRatio*            
-
-            Vector3f dir = Vector3f(x, y, -1); // Don't forget to normalize this direction!
+            x = 2.*((i+0.5)/(float)scene.width - 0.5)*scale*imageAspectRatio;
+            y = -2.*((j+0.5)/(float)scene.height - 0.5)*scale;
+            Vector3f dir = Vector3f(x, y, -1.); // Don't forget to normalize this direction!
+            dir =normalize(dir);
             framebuffer[m++] = castRay(eye_pos, dir, scene, 0);
         }
-        UpdateProgress(j / (float)scene.height);
+        //UpdateProgress(j / (float)scene.height);
     }
 
     // save framebuffer to file
@@ -247,4 +253,5 @@ void Renderer::Render(const Scene& scene)
         fwrite(color, 1, 3, fp);
     }
     fclose(fp);    
+    std::cout<<"end"<<std::endl;
 }

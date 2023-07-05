@@ -6,13 +6,16 @@ BVHAccel::BVHAccel(std::vector<Object*> p, int maxPrimsInNode,
                    SplitMethod splitMethod)
     : maxPrimsInNode(std::min(255, maxPrimsInNode)), splitMethod(splitMethod),
       primitives(std::move(p))
-{
+{   
+    
     time_t start, stop;
     time(&start);
-    if (primitives.empty())
-        return;
-
-    root = recursiveBuild(primitives);
+    // if(splitMethod==SplitMethod::NAIVE){
+         root = recursiveBuild(primitives);
+    // }
+    // else{
+        //root = SAHBuild(primitives);
+    //}
 
     time(&stop);
     double diff = difftime(stop, start);
@@ -25,6 +28,11 @@ BVHAccel::BVHAccel(std::vector<Object*> p, int maxPrimsInNode,
         hrs, mins, secs);
 }
 
+BVHBuildNode* BVHAccel::SAHBuild(std::vector<Object*> objects){
+    BVHBuildNode* node = new BVHBuildNode();
+    return node;
+}
+
 BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
 {
     BVHBuildNode* node = new BVHBuildNode();
@@ -33,21 +41,33 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
     Bounds3 bounds;
     for (int i = 0; i < objects.size(); ++i)
         bounds = Union(bounds, objects[i]->getBounds());
-    if (objects.size() == 1) {
-        // Create leaf _BVHBuildNode_
-        node->bounds = objects[0]->getBounds();
-        node->object = objects[0];
-        node->left = nullptr;
-        node->right = nullptr;
-        return node;
-    }
-    else if (objects.size() == 2) {
-        node->left = recursiveBuild(std::vector{objects[0]});
-        node->right = recursiveBuild(std::vector{objects[1]});
+        if (objects.size() == 1) {
+            // Create leaf _BVHBuildNode_
+            node->bounds = objects[0]->getBounds();
+            node->object = objects[0];
+            node->left = nullptr;
+            node->right = nullptr;
+            return node;
+        }
+        else if (objects.size() == 2) {
+            node->left = recursiveBuild(std::vector{objects[0]});
+            node->right = recursiveBuild(std::vector{objects[1]});
 
-        node->bounds = Union(node->left->bounds, node->right->bounds);
-        return node;
-    }
+            node->bounds = Union(node->left->bounds, node->right->bounds);
+            return node;
+        }
+    // if (objects.size()<=maxPrimsInNode){
+    //     Bounds3 mergedBounds;
+    //     for(int j=0; j<objects.size(); j++){
+    //         mergedBounds = Union(mergedBounds, objects[j]->getBounds());
+            
+    //         node->objectlist.push_back(objects[j]);
+    //     }
+    //     node->bounds = mergedBounds;
+    //     node->left = nullptr;
+    //     node->right = nullptr;
+    //     return node;
+    // }
     else {
         Bounds3 centroidBounds;
         for (int i = 0; i < objects.size(); ++i)
@@ -104,8 +124,31 @@ Intersection BVHAccel::Intersect(const Ray& ray) const
 
 Intersection BVHAccel::getIntersection(BVHBuildNode* node, const Ray& ray) const
 {
+        
     // TODO Traverse the BVH to find intersection
-
     Intersection result;
-    return result;
+    
+    std::array<int, 3> dirIsNeg{ray.direction[0]>0, ray.direction[1]>0, ray.direction[2]>0};
+    if(!node->bounds.IntersectP(ray, ray.direction_inv, dirIsNeg)){
+        return result;
+    }
+    if(!node->left && !node->right){
+ 
+        return node->object->getIntersection(ray);
+
+
+        // double dis= std::numeric_limits<double>::max();
+        // for(int i=0; i<node->objectlist.size(); i++){
+        //     Intersection temp = node->objectlist[i]->getIntersection(ray);
+        //     if(temp.distance<dis){
+        //         dis = temp.distance;
+        //         result = temp;
+        //     }
+        // }
+        // return result;
+    }
+
+    Intersection h1 = getIntersection(node->left, ray);
+    Intersection h2 = getIntersection(node->right, ray);
+    return h1.distance<h2.distance?h1:h2;
 }

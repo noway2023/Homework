@@ -2,14 +2,15 @@ cmake_minimum_required(VERSION 3.10)
 project(BezierCurve)
 set(CMAKE_CXX_STANDARD 14)
 
-#find_package(OpenCV REQUIRED)
-include_directories(./../)
-include_directories(./../opencv/include)
-set(OpenCV_LIBRARIES ${PROJECT_SOURCE_DIR}/../opencv/lib/opencv_world452d.lib)
-file(COPY ${PROJECT_SOURCE_DIR}/../opencv/bin/opencv_world452d.dll DESTINATION ${PROJECT_BINARY_DIR}/Debug/)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/lib)
 
+set(OpenCV_DIR  "D:/project/ARproject/opencv3.4.15/build/x64/vc15/lib")
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIR})
 
 add_executable(BezierCurve main.cpp)
-
-target_link_libraries(BezierCurve ${OpenCV_LIBRARIES})
+target_link_libraries(BezierCurve ${OpenCV_LIBS})
 

@@ -7,7 +7,7 @@
 
 void Scene::buildBVH() {
     printf(" - Generating BVH...\n\n");
-    this->bvh = new BVHAccel(objects, 1, BVHAccel::SplitMethod::NAIVE);
+    this->bvh = new BVHAccel(objects, 5, BVHAccel::SplitMethod::NAIVE);
 }
 
 Intersection Scene::intersect(const Ray &ray) const
@@ -62,8 +62,8 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 //    float tnear = kInfinity;
     Vector2f uv;
     uint32_t index = 0;
-    if(intersection.happened) {
 
+    if(intersection.happened) {
         Vector3f hitPoint = intersection.coords;
         Vector3f N = intersection.normal; // normal
         Vector2f st; // st coordinates
@@ -104,6 +104,7 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
                 // We use the Phong illumation model int the default case. The phong model
                 // is composed of a diffuse and a specular reflection component.
                 // [/comment]
+                
                 Vector3f lightAmt = 0, specularColor = 0;
                 Vector3f shadowPointOrig = (dotProduct(ray.direction, N) < 0) ?
                                            hitPoint + N * EPSILON :
@@ -118,6 +119,20 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
                     if (area_ptr)
                     {
                         // Do nothing for this assignment
+                        for(int j=0; j<area_ptr->length; j++){
+                            Vector3f lightDir = area_ptr->SamplePoint() - hitPoint;
+                            float lightDistance2 = dotProduct(lightDir, lightDir);
+                            lightDir = normalize(lightDir);
+                            float LdotN = std::max(0.f, dotProduct(lightDir, N));
+                            Object *shadowHitObject = nullptr;
+                            float tNearShadow = kInfinity;
+                            // is the point in shadow, and is the nearest occluding object closer to the object than the light itself?
+                            bool inShadow = bvh->Intersect(Ray(shadowPointOrig, lightDir)).happened;
+                            lightAmt += (1 - inShadow) * get_lights()[i]->intensity * LdotN;
+                            Vector3f reflectionDirection = reflect(-lightDir, N);
+                            specularColor += powf(std::max(0.f, -dotProduct(reflectionDirection, ray.direction)),
+                                              m->specularExponent) * get_lights()[i]->intensity;
+                        }
                     }
                     else
                     {

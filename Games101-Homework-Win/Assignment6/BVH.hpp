@@ -28,7 +28,7 @@ public:
     enum class SplitMethod { NAIVE, SAH };
 
     // BVHAccel Public Methods
-    BVHAccel(std::vector<Object*> p, int maxPrimsInNode = 1, SplitMethod splitMethod = SplitMethod::NAIVE);
+    BVHAccel(std::vector<Object*> p, int maxPrimsInNode = 5, SplitMethod splitMethod = SplitMethod::NAIVE);
     Bounds3 WorldBound() const;
     ~BVHAccel();
 
@@ -39,6 +39,7 @@ public:
 
     // BVHAccel Private Methods
     BVHBuildNode* recursiveBuild(std::vector<Object*>objects);
+    BVHBuildNode* SAHBuild(std::vector<Object*>objects);
 
     // BVHAccel Private Data
     const int maxPrimsInNode;
@@ -51,7 +52,7 @@ struct BVHBuildNode {
     BVHBuildNode *left;
     BVHBuildNode *right;
     Object* object;
-
+    std::vector<Object*> objectlist;
 public:
     int splitAxis=0, firstPrimOffset=0, nPrimitives=0;
     // BVHBuildNode Public Methods
