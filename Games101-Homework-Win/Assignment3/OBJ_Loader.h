@@ -308,7 +308,7 @@ namespace objl
             // Calulate Triangle's Normal
             Vector3 n = GenTriNormal(tri1, tri2, tri3);
 
-            // Project the point onto this normal
+            // Project the point onto this normal //some problem? point-tri1?
             Vector3 proj = math::ProjV3(point, n);
 
             // If the distance from the triangle to the point is 0

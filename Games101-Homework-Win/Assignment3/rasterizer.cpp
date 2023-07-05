@@ -270,27 +270,6 @@ Eigen::Vector3f barycentric(float x, float y, const Vector4f* v){
 void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eigen::Vector3f, 3>& view_pos) 
 {
     auto v = t.toVector4();
-    // TODO: From your HW3, get the triangle rasterization code.
-    // TODO: Inside your rasterization loop:
-    //    * v[i].w() is the vertex view space depth value z.
-    //    * Z is interpolated view space depth for the current pixel
-    //    * zp is depth between zNear and zFar, used for z-buffer
-
-    // float Z = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-    // float zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
-    // zp *= Z;
-
-    // TODO: Interpolate the attributes:
-    // auto interpolated_color
-    // auto interpolated_normal
-    // auto interpolated_texcoords
-    // auto interpolated_shadingcoords
-
-    // Use: fragment_shader_payload payload( interpolated_color, interpolated_normal.normalized(), interpolated_texcoords, texture ? &*texture : nullptr);
-    // Use: payload.view_pos = interpolated_shadingcoords;
-    // Use: Instead of passing the triangle's color directly to the frame buffer, pass the color to the shaders first to get the final color;
-    // Use: auto pixel_color = fragment_shader(payload);
-
     int bbminx = width-1,bbminy= height-1, bbmaxx=0, bbmaxy=0;
     for(int i = 0;i < 3; i++){
         bbminx = std::max(0, std::min(bbminx, (int)v[i].x()));
@@ -298,33 +277,60 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
         bbmaxx = std::min(width-1, std::max(bbmaxx, (int)v[i].x()));
         bbmaxy = std::min(height-1, std::max(bbmaxy, (int)v[i].y()));
     }
-    for(int i=bbminx;i<bbmaxx;i++){
-        for(int j=bbminy;j<bbmaxy;j++){
+    for(int j=bbminy;j<=bbmaxy;j++){
+        for(int i=bbminx;i<=bbmaxx;i++){
             Eigen::Vector3f Point({(float)i, (float)j, 1.});
+            // Eigen::Vector3f w = barycentric(Point.x(), Point.y(), t.v);
+            // if(w.x()<0 || w.y()<0 || w.z()<0) continue;
+            // Eigen::Vector3f colors({0.,0.,0.});
+            // Eigen::Vector3f interpolated_normal({0.,0.,0.});
+            // Eigen::Vector2f interpolated_texcoords({0.,0.});
+            // Eigen::Vector3f interpolated_shadingcoords({0.,0.,0.});
+            // float ztemp=0.0;
+            // for(int k=0;k<3;k++){
+            //     ztemp += w[k] * t.v[k].z();
+            //     colors += w[k] * t.color[k];
+            //     interpolated_normal += w[k]*t.normal[k];
+            //     interpolated_texcoords += w[k]*t.tex_coords[k];
+            //     interpolated_shadingcoords += w[k]*view_pos[k];
+            // }
+            // if(ztemp<depth_buf[j*width+i]){
+            //     depth_buf[j*width+i] = ztemp;
+            //     fragment_shader_payload payload( colors, interpolated_normal.normalized(), interpolated_texcoords, texture ? &*texture : nullptr);
+            //     payload.view_pos = interpolated_shadingcoords;
+            //     Eigen::Vector3f pixel_color = fragment_shader(payload);
+            //     set_pixel(Eigen::Vector2i({i, j}), pixel_color);
+            // } 
             std::vector<Eigen::Vector3f> samples(4);
             samples[0] = Point + Eigen::Vector3f({0.25, 0.25, 0.});
             samples[1] = Point + Eigen::Vector3f({0.75, 0.25, 0.});
             samples[2] = Point + Eigen::Vector3f({0.25, 0.75, 0.});
             samples[3] = Point + Eigen::Vector3f({0.75, 0.75, 0.});
-            // Eigen::Vector3f colors({0.,0.,0.});
-            // float ztemp=0.0;
-            // int flag = 0;
             for(int aa=0;aa<4;aa++){
                 Eigen::Vector3f w = barycentric(samples[aa].x(), samples[aa].y(), t.v);
                 if(w.x()<0 || w.y()<0 || w.z()<0) continue;
-                //flag++;
                 Eigen::Vector3f colors({0.,0.,0.});
+                Eigen::Vector3f interpolated_normal({0.,0.,0.});
+                Eigen::Vector2f interpolated_texcoords({0.,0.});
+                Eigen::Vector3f interpolated_shadingcoords({0.,0.,0.});
                 float ztemp=0.0;
                 for(int k=0;k<3;k++){
                     ztemp += w[k] * t.v[k].z();
-                    colors += w[k] * t.color[k]/4;
+                    colors += w[k] * t.color[k];
+                    interpolated_normal += w[k]*t.normal[k];
+                    interpolated_texcoords += w[k]*t.tex_coords[k];
+                    interpolated_shadingcoords += w[k]*view_pos[k];
                 }
-                if(ztemp<depth_buf[4*(i*width+j)+aa]){
-                    depth_buf[4*(i*width+j)+aa] = ztemp;
-                    colors = colors*255. + frame_buf[(height-1-Point.y())*width + Point.x()];
-                    set_pixel(Eigen::Vector2i({i, j}), colors);
-                }
-                
+                if(ztemp<depth_buf[4*(j*width+i)+aa]){
+                    depth_buf[4*(j*width+i)+aa] = ztemp;
+                    fragment_shader_payload payload( colors, interpolated_normal.normalized(), interpolated_texcoords, texture ? &*texture : nullptr);
+                    payload.view_pos = interpolated_shadingcoords;
+                    Eigen::Vector3f pixel_color = fragment_shader(payload);
+                    Eigen::Vector3f pixel_colors = pixel_color/4. + frame_buf[(height-1-Point.y())*width + Point.x()] - sample_buf[4*(j*width+i)+aa];
+                    sample_buf[4*(j*width+i)+aa] = pixel_color/4.;
+                    set_pixel(Eigen::Vector2i({i, j}), pixel_colors);
+                    
+                }   
             }
         }
     }
@@ -361,8 +367,10 @@ rst::rasterizer::rasterizer(int w, int h) : width(w), height(h)
 {
     frame_buf.resize(w * h);
     depth_buf.resize(4 * w * h);
+    sample_buf.resize(4 * w * h);
     for(int i=0;i<4*h*w;i++){
         depth_buf[i] = (float)0x7fffffff;
+        sample_buf[i] = Eigen::Vector3f({0.0, 0.0, 0.0});
     }
     texture = std::nullopt;
 }
